@@ -14,7 +14,7 @@ class User(db.Model):
 
     __tablename__ = "users"
 
-    username = db.Column(db.String(20), unique=True, primary_key=True)
+    username = db.Column(db.String(20), unique=True, nullable=False, primary_key=True)
     password = db.Column(db.Text, nullable=False)
     email = db.Column(db.String(50), nullable=False, unique=True)
     first_name = db.Column(db.String(30), nullable=False)
@@ -54,7 +54,7 @@ class Feedback(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     title = db.Column(db.String(100), nullable=False)
     content = db.Column(db.Text, nullable=False)
-    user = db.Column(db.Text, db.ForeignKey("users.username"), nullable=False)
+    user = db.Column(db.String(20), db.ForeignKey("users.username"), nullable=False)
 
     
     

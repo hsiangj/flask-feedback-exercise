@@ -3,6 +3,7 @@ from flask_debugtoolbar import DebugToolbarExtension
 from models import connect_db, db, User, Feedback
 from forms import RegisterForm, LoginForm, FeedbackForm
 from sqlalchemy.exc import IntegrityError
+from werkzeug.exceptions import Unauthorized
 
 
 app = Flask(__name__)
@@ -26,8 +27,12 @@ def homepage():
 @app.route('/register', methods=['GET', 'POST'])
 def register_user():
   """Register user: produce form & handle form submission."""
-  form = RegisterForm()
+
+  if 'user' in session:
+    return redirect(f"/users/{session['user']}")
   
+  form = RegisterForm()
+
   #POST request
   if form.validate_on_submit():
       name = form.username.data
@@ -44,13 +49,17 @@ def register_user():
         form.username.errors.append('Username taken. Please choose another.')
         return render_template('register.html', form=form)
       session['user'] = new_user.username
-      flash(f'Welcome {new_user.username}! Successfully Created Your Account!', 'success')
+      flash(f'Welcome {new_user.username}! Thanks for registering!', 'success')
       return redirect(f'/users/{new_user.username}')
   #GET request
   return render_template('register.html', form=form)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login_user():
+
+  if 'user' in session:
+    return redirect(f"/users/{session['user']}")
+
   form = LoginForm()
 
   if form.validate_on_submit():
@@ -66,10 +75,11 @@ def login_user():
     else:
       form.username.errors = ['Doublecheck username.']
       form.password.errors = ['Doublecheck password.']
-
+      return render_template('login.html', form=form)
+    
   return render_template('login.html', form=form)
 
-@app.route('/logout')
+@app.route('/logout', methods=['GET','POST'])
 def logout_user():
   session.pop('user')
   flash('See you later!', 'info')
@@ -82,8 +92,9 @@ def show_user(username):
   """Show secret page to registered/logged in users."""
   user = User.query.get_or_404(username)
   if user.username not in session['user']: 
-    flash('Please login first.', 'danger')
-    return redirect('/')  
+    raise Unauthorized() 
+    #raise Unauthorized inspired by solutions file
+    
   return render_template('feedback/user.html', user=user )  
   
 @app.route('/users/<username>/delete', methods=['POST'])
@@ -114,7 +125,7 @@ def show_feedback_form(username):
       flash('Feedback added!', 'success')
       return redirect(f'/users/{user.username}')
     
-  return render_template('feedback/add.html', form=form, user=user)
+    return render_template('feedback/add.html', form=form, user=user)
 
 @app.route('/feedback/<int:id>/update', methods=['GET','POST'])
 def edit_feedback_form(id):
@@ -130,7 +141,7 @@ def edit_feedback_form(id):
       flash(f'Feedback saved!', 'success')
       return redirect(f'/users/{feedback.users.username}')
 
-  return render_template('feedback/edit.html', form=edit_form, feedback=feedback)
+    return render_template('feedback/edit.html', form=edit_form, feedback=feedback)
 
 @app.route('/feedback/<int:id>/delete', methods=['POST'])
 def delete_feedback(id):
